@@ -10,6 +10,24 @@ RoutePlanner::RoutePlanner(RouteModel &model, float start_x, float start_y, floa
 
     // TODO 2: Use the m_Model.FindClosestNode method to find the closest nodes to the starting and ending coordinates.
     // Store the nodes you find in the RoutePlanner's start_node and end_node attributes.
+    auto s_node = model.FindClosestNode(start_x, start_y);
+    auto e_node = model.FindClosestNode(end_x,end_y);
+    
+    if(s_node)
+    {
+        start_node = &s_node;
+    }
+    else{
+       start_node =  new RouteModel::Node();
+    }
+
+    if(e_node)
+    {
+        end_node = &e_node;
+    }
+    else{
+        end_node = new RouteModel::Node();
+    }
 
 }
 
@@ -20,7 +38,13 @@ RoutePlanner::RoutePlanner(RouteModel &model, float start_x, float start_y, floa
 // - Node objects have a distance method to determine the distance to another node.
 
 float RoutePlanner::CalculateHValue(RouteModel::Node const *node) {
-
+    if(node)
+    {
+        return node->distance(*end_node);
+    }
+    else{
+        return 0;
+    }
 }
 
 
@@ -32,7 +56,34 @@ float RoutePlanner::CalculateHValue(RouteModel::Node const *node) {
 // - For each node in current_node.neighbors, add the neighbor to open_list and set the node's visited attribute to true.
 
 void RoutePlanner::AddNeighbors(RouteModel::Node *current_node) {
+    if(!current_node)
+    {
+        return;
+    }
 
+    current_node->FindNeighbors();
+    float distance = 0.0f;
+
+    for(auto neighbor : current_node->neighbors)
+    {
+        distance = current_node->distance(*neighbor) + current_node->g_value;
+        if(!neighbor->visited)
+        {
+            neighbor->parent = current_node;
+            neighbor->g_value = distance;
+            neighbor->h_value = CalculateHValue(neighbor);
+            neighbor->visited = true;
+            open_list.push_back(neighbor);
+        }
+        else if(distance < neighbor->g_value)
+        {
+            neighbor->parent = current_node;
+            neighbor->g_value = distance;
+            neighbor->h_value = CalculateHValue(neighbor);
+            neighbor->visited = true;
+            open_list.push_back(neighbor);
+        }
+    }
 }
 
 
@@ -44,7 +95,18 @@ void RoutePlanner::AddNeighbors(RouteModel::Node *current_node) {
 // - Return the pointer.
 
 RouteModel::Node *RoutePlanner::NextNode() {
+    sort(open_list.begin(), open_list.end(), [](const RouteModel::Node *a, const RouteModel::Node *b)
+    {
+        int fa = a->g_value + a->h_value;
+        int fb = b->g_value + b->h_value;
+        
+        return fa > fb;    
+    });
 
+    RouteModel::Node * neighbor = open_list.back();
+    open_list.pop_back();
+
+    return neighbor;
 }
 
 
@@ -62,8 +124,21 @@ std::vector<RouteModel::Node> RoutePlanner::ConstructFinalPath(RouteModel::Node 
     std::vector<RouteModel::Node> path_found;
 
     // TODO: Implement your solution here.
+    if(current_node)
+    {
+        RouteModel::Node * node = current_node;
+        while(node != nullptr)
+        {
+            path_found.push_back(*node);
+            distance += node->distance(*(node->parent));
+            node = node->parent;
+        }
 
-    distance *= m_Model.MetricScale(); // Multiply the distance by the scale of the map to get meters.
+        distance *= m_Model.MetricScale(); // Multiply the distance by the scale of the map to get meters.
+    }
+    
+    std::reverse(path_found.begin(), path_found.end());
+
     return path_found;
 
 }
@@ -80,5 +155,31 @@ void RoutePlanner::AStarSearch() {
     RouteModel::Node *current_node = nullptr;
 
     // TODO: Implement your solution here.
+    start_node->visited = true;
+    open_list.push_back(start_node);
+
+    AddNeighbors(start_node);
+    // get the best one
+    current_node = NextNode();
+
+    bool found = false;
+
+    while(!found && !open_list.empty())
+    {
+        if(current_node == end_node)
+        {
+            found = true;
+        }
+        else
+        {
+            AddNeighbors(current_node);
+            current_node = NextNode();
+        }
+    }
+
+    if(found && current_node)
+    {
+        ConstructFinalPath(current_node);
+    }
 
 }
