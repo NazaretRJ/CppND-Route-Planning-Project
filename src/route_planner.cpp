@@ -13,21 +13,9 @@ RoutePlanner::RoutePlanner(RouteModel &model, float start_x, float start_y, floa
     auto s_node = model.FindClosestNode(start_x, start_y);
     auto e_node = model.FindClosestNode(end_x,end_y);
     
-    if(s_node)
-    {
-        start_node = &s_node;
-    }
-    else{
-       start_node =  new RouteModel::Node();
-    }
-
-    if(e_node)
-    {
-        end_node = &e_node;
-    }
-    else{
-        end_node = new RouteModel::Node();
-    }
+    start_node = &s_node;
+    end_node = &e_node;
+    
 
 }
 
@@ -38,7 +26,7 @@ RoutePlanner::RoutePlanner(RouteModel &model, float start_x, float start_y, floa
 // - Node objects have a distance method to determine the distance to another node.
 
 float RoutePlanner::CalculateHValue(RouteModel::Node const *node) {
-    if(node)
+    if(node && end_node)
     {
         return node->distance(*end_node);
     }
